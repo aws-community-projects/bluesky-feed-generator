@@ -1,14 +1,18 @@
-# Welcome to your CDK TypeScript project
+# Bluesky Feed Generator on AWS
 
-This is a blank project for CDK development with TypeScript.
+This project is based on [feed-generator](https://github.com/bluesky-social/feed-generator) from bluesky.
 
-The `cdk.json` file tells the CDK Toolkit how to execute your app.
+It is a CDK project that creates:
 
-## Useful commands
+- A fargate service that parses the Bluesky websocket event stream
+- A Serverless Aurora MySQL database that stores posts we care about
+- An API Gateway that serves a json file and the feed lambda
+- A Lambda function that generates the feed(s)
 
-* `npm run build`   compile typescript to js
-* `npm run watch`   watch for changes and compile
-* `npm run test`    perform the jest unit tests
-* `cdk deploy`      deploy this stack to your default AWS account/region
-* `cdk diff`        compare deployed stack with current state
-* `cdk synth`       emits the synthesized CloudFormation template
+As part of the CDK deployment, it initializes the database and publishes the feed to bluesky.
+
+![](./Bluesky-Feed-AWS.drawio.png)
+
+## Requirements
+
+You should already have a Bluesky account.  Create an app password in your settings section and store it in a secrets manager secret via the console.  The CDK Stack will need the secret ARN as part of the config.

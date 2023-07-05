@@ -1,0 +1,14 @@
+{
+  "hosted-zone:account=359317520455:domainName=martz.codes:region=us-east-1": {
+    "Id": "/hostedzone/Z04054763C1R1NXW4OYC9",
+    "Name": "martz.codes."
+  },
+  "availability-zones:account=359317520455:region=us-east-1": [
+    "us-east-1a",
+    "us-east-1b",
+    "us-east-1c",
+    "us-east-1d",
+    "us-east-1e",
+    "us-east-1f"
+  ]
+}
