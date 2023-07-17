@@ -12,10 +12,10 @@ import {
   Certificate,
   CertificateValidation,
 } from "aws-cdk-lib/aws-certificatemanager";
+import { ITable } from "aws-cdk-lib/aws-dynamodb";
 import { Runtime, Tracing } from "aws-cdk-lib/aws-lambda";
 import { NodejsFunction } from "aws-cdk-lib/aws-lambda-nodejs";
 import { LogGroup, RetentionDays } from "aws-cdk-lib/aws-logs";
-import { ServerlessCluster } from "aws-cdk-lib/aws-rds";
 import { ARecord, HostedZone, RecordTarget } from "aws-cdk-lib/aws-route53";
 import { ApiGateway } from "aws-cdk-lib/aws-route53-targets";
 import { Secret } from "aws-cdk-lib/aws-secretsmanager";
@@ -36,8 +36,6 @@ export interface BlueskyPublishFeedProps {
 }
 
 export interface BlueskyFeedProps {
-  db: ServerlessCluster;
-  dbName: string;
   domainName: string;
   publishFeed: BlueskyPublishFeedProps;
 }
@@ -46,7 +44,7 @@ export class BlueskyFeed extends Construct {
   constructor(scope: Construct, id: string, props: BlueskyFeedProps) {
     super(scope, id);
 
-    const { db, dbName, domainName: zoneDomain } = props;
+    const { domainName: zoneDomain } = props;
     const domainName = `feed.${zoneDomain}`;
     const hostedzone = HostedZone.fromLookup(this, "hostedzone", {
       domainName: zoneDomain,
@@ -95,6 +93,8 @@ export class BlueskyFeed extends Construct {
       ],
     };
 
+    const secret = Secret.fromSecretCompleteArn(this, "publish-secret", props.publishFeed.blueskySecretArn);
+
     const feedFn = new NodejsFunction(this, "feed", {
       functionName: "bluesky-feed",
       entry: join(__dirname, "lambda/feed.ts"),
@@ -102,12 +102,11 @@ export class BlueskyFeed extends Construct {
       timeout: Duration.seconds(30),
       tracing: Tracing.ACTIVE,
       environment: {
-        DB_NAME: dbName,
-        CLUSTER_ARN: db.clusterArn,
-        SECRET_ARN: db.secret?.secretArn || "",
+        HANDLE: props.publishFeed.handle,
+        SECRET_ARN: props.publishFeed.blueskySecretArn,
       },
     });
-    db.grantDataApiAccess(feedFn);
+    secret.grantRead(feedFn);
     new LogGroup(this, "feed-log-group", {
       logGroupName: `/aws/lambda/${feedFn.functionName}`,
       removalPolicy: RemovalPolicy.DESTROY,
@@ -152,8 +151,7 @@ export class BlueskyFeed extends Construct {
       target: RecordTarget.fromAlias(new ApiGateway(api)),
     });
 
-
-    const publishSecret = Secret.fromSecretCompleteArn(this, "publish-secret", props.publishFeed.blueskySecretArn);
+    feedFn.addEnvironment("SECRET_ARN", props.publishFeed.blueskySecretArn);
     const publishFeedFn = new NodejsFunction(this, "publish-feed", {
       functionName: "bluesky-publish-feed",
       entry: join(__dirname, "lambda/publish-feed.ts"),
@@ -167,7 +165,7 @@ export class BlueskyFeed extends Construct {
         FEEDS: JSON.stringify(props.publishFeed.feeds),
       },
     });
-    publishSecret.grantRead(publishFeedFn);
+    secret.grantRead(publishFeedFn);
     new LogGroup(this, "publish-feed-log-group", {
       logGroupName: `/aws/lambda/${publishFeedFn.functionName}`,
       removalPolicy: RemovalPolicy.DESTROY,

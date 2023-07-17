@@ -7,7 +7,6 @@ import type {
   CloudFormationCustomResourceEvent,
   CloudFormationCustomResourceResponse,
 } from "aws-lambda";
-import { ids } from "../../bluesky-feed-parser/lexicon/lexicons";
 
 const client = new SecretsManagerClient({});
 
@@ -41,7 +40,7 @@ export const handler = async (
         const { displayName, description } = feeds[recordName];
         const putRecord = {
           repo: agent.session?.did ?? "",
-          collection: ids.AppBskyFeedGenerator,
+          collection: "app.bsky.feed.generator",
           rkey: recordName,
           record: {
             did: feedGenDid,
